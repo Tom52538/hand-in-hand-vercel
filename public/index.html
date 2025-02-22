@@ -35,10 +35,29 @@
     <h2>Gesamtarbeitszeit</h2>
     <p id="totalHours"></p>
 
+    <h2>Admin Login</h2>
+    <form id="adminLoginForm">
+      <label for="adminPassword">Passwort:</label>
+      <input type="password" id="adminPassword" name="adminPassword" required>
+      <button type="submit">Anmelden</button>
+    </form>
+
+    <h2>Admin: Alle Arbeitszeiten</h2>
+    <ul id="adminWorkHoursList"></ul>
+
+    <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
+
     <button id="downloadCsv">CSV herunterladen</button>
   </div>
 
   <script>
+    document.getElementById('name').addEventListener('input', async function() {
+      const name = this.value;
+      if (name) {
+        await loadWorkHours(name);
+      }
+    });
+
     document.getElementById('workHoursForm').addEventListener('submit', async function(event) {
       event.preventDefault();
 
@@ -81,9 +100,45 @@
       document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${formatHours(totalHours)}`;
     }
 
+    document.getElementById('adminLoginForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const password = document.getElementById('adminPassword').value;
+
+      const response = await fetch('/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+
+      if (response.ok) {
+        loadAdminWorkHours();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error);
+      }
+    });
+
+    async function loadAdminWorkHours() {
+      const response = await fetch('/admin/work-hours');
+      const data = await response.json();
+      const adminWorkHoursList = document.getElementById('adminWorkHoursList');
+      adminWorkHoursList.innerHTML = '';
+
+      data.workHours.forEach(entry => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}`;
+        adminWorkHoursList.appendChild(listItem);
+      });
+    }
+
     document.getElementById('downloadCsv').addEventListener('click', async function() {
       const name = document.getElementById('name').value;
       window.location.href = `/download-csv?name=${encodeURIComponent(name)}`;
+    });
+
+    document.getElementById('adminDownloadCsv').addEventListener('click', async function() {
+      window.location.href = '/admin/download-csv';
     });
 
     function formatHours(hours) {
