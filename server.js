@@ -1,107 +1,96 @@
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const bodyParser = require('body-parser');
-const path = require('path');
-const app = express();
-const port = 3000;
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arbeitszeiterfassung</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .container { max-width: 600px; margin: auto; padding: 20px; }
+    input, button { display: block; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Arbeitszeiterfassung</h1>
+    <form id="workHoursForm">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" required>
 
-// Middleware
-app.use(bodyParser.json());
-app.use(express.static('public'));
+      <label for="date">Datum:</label>
+      <input type="date" id="date" name="date" required>
 
-// SQLite Datenbank einrichten
-const db = new sqlite3.Database(':memory:');
+      <label for="startTime">Arbeitsbeginn:</label>
+      <input type="time" id="startTime" name="startTime" required>
 
-db.serialize(() => {
-  db.run("CREATE TABLE work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL)");
-});
+      <label for="endTime">Arbeitsende:</label>
+      <input type="time" id="endTime" name="endTime" required>
 
-// API Endpunkte
-app.post('/log-hours', (req, res) => {
-  const { name, date, startTime, endTime } = req.body;
-  const totalHours = calculateWorkHours(startTime, endTime);
-  const breakTime = calculateBreakTime(totalHours);
-  const netHours = totalHours - breakTime;
+      <button type="submit">Eintragen</button>
+    </form>
 
-  const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time) VALUES (?, ?, ?, ?)");
-  stmt.run(name, date, netHours, breakTime, function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+    <h2>Gebuchte Arbeitszeiten</h2>
+    <ul id="workHoursList"></ul>
+
+    <h2>Gesamtarbeitszeit</h2>
+    <p id="totalHours"></p>
+
+    <button id="downloadCsv">CSV herunterladen</button>
+  </div>
+
+  <script>
+    document.getElementById('workHoursForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const name = document.getElementById('name').value;
+      const date = document.getElementById('date').value;
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+
+      const response = await fetch('/log-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, date, startTime, endTime })
+      });
+
+      if (response.ok) {
+        loadWorkHours(name);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error);
+      }
+    });
+
+    async function loadWorkHours(name) {
+      const response = await fetch(`/work-hours?name=${encodeURIComponent(name)}`);
+      const data = await response.json();
+      const workHoursList = document.getElementById('workHoursList');
+      workHoursList.innerHTML = '';
+
+      let totalHours = 0;
+
+      data.workHours.forEach(entry => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}`;
+        workHoursList.appendChild(listItem);
+
+        const [hours, minutes] = entry.hours.split(' ');
+        totalHours += parseInt(hours) + parseInt(minutes) / 60;
+      });
+
+      document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${formatHours(totalHours)}`;
     }
-    res.json({ id: this.lastID });
-  });
-  stmt.finalize();
-});
 
-app.get('/work-hours', (req, res) => {
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+    function formatHours(hours) {
+      const minutes = Math.round((hours % 1) * 60);
+      const formattedHours = Math.floor(hours);
+      return `${formattedHours}h ${minutes}min`;
     }
-    const formattedRows = rows.map(row => ({
-      ...row,
-      hours: formatHours(row.hours),
-      break_time: formatHours(row.break_time)
-    }));
-    res.json({ workHours: formattedRows });
-  });
-});
 
-app.get('/download-csv', (req, res) => {
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    const csv = convertToCSV(rows);
-    res.header('Content-Type', 'text/csv');
-    res.attachment('work_hours.csv');
-    return res.send(csv);
-  });
-});
-
-// Startseite bereitstellen
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Hilfsfunktionen
-function calculateWorkHours(startTime, endTime) {
-  const start = new Date(`1970-01-01T${startTime}:00`);
-  const end = new Date(`1970-01-01T${endTime}:00`);
-  const diff = end - start;
-  return diff / 1000 / 60 / 60; // Stunden
-}
-
-function calculateBreakTime(hours) {
-  if (hours > 9) {
-    return 0.75; // 45 Minuten Pause
-  } else if (hours > 6) {
-    return 0.5; // 30 Minuten Pause
-  } else {
-    return 0; // Keine Pause erforderlich
-  }
-}
-
-function formatHours(hours) {
-  const minutes = Math.round((hours % 1) * 60);
-  const formattedHours = Math.floor(hours);
-  return `${formattedHours}h ${minutes}min`;
-}
-
-function convertToCSV(data) {
-  const csvRows = [];
-  const headers = Object.keys(data[0]);
-  csvRows.push(headers.join(','));
-
-  for (const row of data) {
-    const values = headers.map(header => row[header]);
-    csvRows.push(values.join(','));
-  }
-
-  return csvRows.join('\n');
-}
-
-// Server starten
-app.listen(port, () => {
-  console.log(`Server läuft auf http://localhost:${port}`);
-});
+    document.getElementById('downloadCsv').addEventListener('click', async function() {
+      const name = document.getElementById('name').value;
+      window.location.href = `/download-csv?name=${encodeURIComponent(name)}`;
+    });
+  </script>
+</body>
+</html>
