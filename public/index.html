@@ -88,7 +88,7 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours}, Bemerkung: ${entry.comment}`;
+        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours} Stunden, Bemerkung: ${entry.comment}`;
         workHoursList.appendChild(listItem);
 
         const [hours, minutes] = entry.hours.split(' ');
@@ -125,7 +125,7 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours}, Bemerkung: ${entry.comment}`;
+        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours} Stunden, Bemerkung: ${entry.comment}`;
         adminWorkHoursList.appendChild(listItem);
       });
     }

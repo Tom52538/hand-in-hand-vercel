@@ -44,7 +44,7 @@ db.serialize(() => {
   });
 });
 
-// API Endpunkte
+// API Endpunkt zum Erfassen der Arbeitszeiten
 app.post('/log-hours', (req, res) => {
   const { name, date, startTime, endTime, comment } = req.body;
 
@@ -80,6 +80,7 @@ app.post('/log-hours', (req, res) => {
   });
 });
 
+// API Endpunkt zum Abrufen der Arbeitszeiten eines Mitarbeiters
 app.get('/work-hours', (req, res) => {
   const name = req.query.name;
   const query = "SELECT * FROM work_hours WHERE LOWER(name) = ?";
@@ -87,67 +88,8 @@ app.get('/work-hours', (req, res) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    const formattedRows = rows.map(row => ({
-      name: row.name,
-      date: row.date,
-      startTime: row.startTime,
-      endTime: row.endTime,
-      hours: `${row.hours} Stunden`,
-      comment: row.comment || ''
-    }));
-    res.json({ workHours: formattedRows });
+    res.json({ workHours: rows });
   });
-});
-
-app.post('/admin-login', (req, res) => {
-  const { password } = req.body;
-  if (password === 'admin') {
-    req.session.admin = true;
-    res.json({ message: 'Admin login successful' });
-  } else {
-    res.status(401).json({ error: 'Invalid password' });
-  }
-});
-
-app.get('/admin/work-hours', (req, res) => {
-  if (!req.session.admin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    const formattedRows = rows.map(row => ({
-      ...row,
-      hours: formatHours(row.hours),
-      break_time: formatHours(row.break_time)
-    }));
-    res.json({ workHours: formattedRows });
-  });
-});
-
-app.get('/admin/download-csv', (req, res) => {
-  if (!req.session.admin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (rows.length > 0) {
-      const csv = convertToCSV(rows);
-      res.header('Content-Type', 'text/csv');
-      res.attachment('arbeitszeiten.csv');
-      return res.send(csv);
-    } else {
-      res.status(404).json({ error: 'No data available' });
-    }
-  });
-});
-
-// Startseite bereitstellen
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Hilfsfunktionen
@@ -170,39 +112,6 @@ function calculateBreakTime(hours, comment) {
   } else {
     return 0; // Keine Pause erforderlich
   }
-}
-
-function formatHours(hours) {
-  const minutes = Math.round((hours % 1) * 60);
-  const formattedHours = Math.floor(hours);
-  return `${formattedHours}h ${minutes}min`;
-}
-
-function convertToCSV(data) {
-  if (!data || data.length === 0) {
-    return '';
-  }
-  const csvRows = [];
-  const headers = ["Name", "Datum", "Anfang", "Ende", "Gesamtzeit", "Bemerkung"];
-  csvRows.push(headers.join(','));
-
-  for (const row of data) {
-    const values = [
-      row.name,
-      row.date,
-      formatTime(row.startTime),
-      formatTime(row.endTime),
-      `${row.hours} Stunden`,
-      row.comment || ''
-    ];
-    csvRows.push(values.join(','));
-  }
-
-  return csvRows.join('\n');
-}
-
-function formatTime(time) {
-  return time.padStart(2, '0') + ":00";
 }
 
 // Server starten
