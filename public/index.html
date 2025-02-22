@@ -81,16 +81,16 @@
       document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${formatHours(totalHours)}`;
     }
 
+    document.getElementById('downloadCsv').addEventListener('click', async function() {
+      const name = document.getElementById('name').value;
+      window.location.href = `/download-csv?name=${encodeURIComponent(name)}`;
+    });
+
     function formatHours(hours) {
       const minutes = Math.round((hours % 1) * 60);
       const formattedHours = Math.floor(hours);
       return `${formattedHours}h ${minutes}min`;
     }
-
-    document.getElementById('downloadCsv').addEventListener('click', async function() {
-      const name = document.getElementById('name').value;
-      window.location.href = `/download-csv?name=${encodeURIComponent(name)}`;
-    });
   </script>
 </body>
 </html>
