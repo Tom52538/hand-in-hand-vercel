@@ -1,7 +1,7 @@
 {
-  "name": "arbeitszeiterfassung",
+  "name": "Überstundennachweis",
   "version": "1.0.0",
-  "description": "Eine einfache Arbeitszeiterfassungs-App",
+  "description": "Hand in Hand",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
