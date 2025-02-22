@@ -22,12 +22,12 @@ app.use(session({
 const db = new sqlite3.Database('./work_hours.db');
 
 db.serialize(() => {
-  db.run("CREATE TABLE IF NOT EXISTS work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL)");
+  db.run("CREATE TABLE IF NOT EXISTS work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL, comment TEXT)");
 });
 
 // API Endpunkte
 app.post('/log-hours', (req, res) => {
-  const { name, date, startTime, endTime } = req.body;
+  const { name, date, startTime, endTime, comment } = req.body;
 
   // Überprüfen, ob bereits ein Eintrag für den Mitarbeiter an diesem Datum existiert
   db.get("SELECT * FROM work_hours WHERE name = ? AND date = ?", [name, date], (err, row) => {
@@ -47,8 +47,8 @@ app.post('/log-hours', (req, res) => {
     const breakTime = calculateBreakTime(totalHours);
     const netHours = totalHours - breakTime;
 
-    const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time) VALUES (?, ?, ?, ?)");
-    stmt.run(name, date, netHours, breakTime, function(err) {
+    const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment) VALUES (?, ?, ?, ?, ?)");
+    stmt.run(name, date, netHours, breakTime, comment || '', function(err) {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
@@ -154,15 +154,26 @@ function convertToCSV(data) {
     return '';
   }
   const csvRows = [];
-  const headers = ["ID", "Name", "Datum", "Stunden", "Pausenzeit"];
+  const headers = ["Name", "Datum", "Anfang", "Ende", "Gesamtzeit", "Bemerkung"];
   csvRows.push(headers.join(','));
 
   for (const row of data) {
-    const values = [row.id, row.name, row.date, row.hours, row.break_time];
+    const values = [
+      row.name,
+      row.date,
+      row.date + ' ' + formatTime(row.startTime),
+      row.date + ' ' + formatTime(row.endTime),
+      row.hours + ' Stunden',
+      row.comment
+    ];
     csvRows.push(values.join(','));
   }
 
   return csvRows.join('\n');
+}
+
+function formatTime(time) {
+  return time.padStart(2, '0') + ":00";
 }
 
 // Server starten
