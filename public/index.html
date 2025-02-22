@@ -22,6 +22,9 @@
       <label for="endTime">Arbeitsende:</label>
       <input type="time" id="endTime" name="endTime" required>
 
+      <label for="comment">Bemerkung:</label>
+      <input type="text" id="comment" name="comment">
+
       <button type="submit">Eintragen</button>
     </form>
 
@@ -59,11 +62,12 @@
       const date = document.getElementById('date').value;
       const startTime = document.getElementById('startTime').value;
       const endTime = document.getElementById('endTime').value;
+      const comment = document.getElementById('comment').value;
 
       const response = await fetch('/log-hours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, date, startTime, endTime })
+        body: JSON.stringify({ name, date, startTime, endTime, comment })
       });
 
       if (response.ok) {
@@ -84,7 +88,7 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}`;
+        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
         workHoursList.appendChild(listItem);
 
         const [hours, minutes] = entry.hours.split(' ');
@@ -121,7 +125,7 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}`;
+        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
         adminWorkHoursList.appendChild(listItem);
       });
     }

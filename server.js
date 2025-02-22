@@ -22,7 +22,20 @@ app.use(session({
 const db = new sqlite3.Database('./work_hours.db');
 
 db.serialize(() => {
-  db.run("CREATE TABLE IF NOT EXISTS work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL, comment TEXT)");
+  db.run("CREATE TABLE IF NOT EXISTS work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL)");
+
+  // Füge das 'comment' Feld hinzu, falls es noch nicht existiert
+  db.all("PRAGMA table_info(work_hours)", [], (err, rows) => {
+    if (err) {
+      console.error("Fehler beim Abrufen der Tabelleninformationen:", err);
+      return;
+    }
+
+    const columnNames = rows.map(row => row.name);
+    if (!columnNames.includes('comment')) {
+      db.run("ALTER TABLE work_hours ADD COLUMN comment TEXT");
+    }
+  });
 });
 
 // API Endpunkte
@@ -161,9 +174,9 @@ function convertToCSV(data) {
     const values = [
       row.name,
       row.date,
-      row.date + ' ' + formatTime(row.startTime),
-      row.date + ' ' + formatTime(row.endTime),
-      row.hours + ' Stunden',
+      formatTime(row.startTime),
+      formatTime(row.endTime),
+      `${row.hours} Stunden`,
       row.comment
     ];
     csvRows.push(values.join(','));
