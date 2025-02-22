@@ -88,7 +88,8 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
+        const formattedDate = formatDate(entry.date);
+        listItem.textContent = `${entry.name}, ${formattedDate}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
         workHoursList.appendChild(listItem);
 
         totalHours += parseFloat(entry.hours);
@@ -124,7 +125,8 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
+        const formattedDate = formatDate(entry.date);
+        listItem.textContent = `${entry.name}, ${formattedDate}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
         adminWorkHoursList.appendChild(listItem);
       });
     }
@@ -132,6 +134,11 @@
     document.getElementById('adminDownloadCsv').addEventListener('click', async function() {
       window.location.href = '/admin/download-csv';
     });
+
+    function formatDate(date) {
+      const [year, month, day] = date.split('-');
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
   </script>
 </body>
 </html>
