@@ -88,14 +88,13 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours} Stunden, Bemerkung: ${entry.comment}`;
+        listItem.textContent = `${entry.name}, ${entry.date}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
         workHoursList.appendChild(listItem);
 
-        const [hours, minutes] = entry.hours.split(' ');
-        totalHours += parseInt(hours) + parseInt(minutes) / 60;
+        totalHours += parseFloat(entry.hours);
       });
 
-      document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${formatHours(totalHours)}`;
+      document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${totalHours.toFixed(2)} Stunden`;
     }
 
     document.getElementById('adminLoginForm').addEventListener('submit', async function(event) {
@@ -125,7 +124,7 @@
 
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `${entry.name}, ${entry.date}, ${formatTime(entry.startTime)}-${formatTime(entry.endTime)}, ${entry.hours} Stunden, Bemerkung: ${entry.comment}`;
+        listItem.textContent = `${entry.name}, ${entry.date}, ${entry.startTime}-${entry.endTime}, ${entry.hours} Stunden, Bemerkung: ${entry.comment || ''}`;
         adminWorkHoursList.appendChild(listItem);
       });
     }
@@ -133,16 +132,6 @@
     document.getElementById('adminDownloadCsv').addEventListener('click', async function() {
       window.location.href = '/admin/download-csv';
     });
-
-    function formatHours(hours) {
-      const minutes = Math.round((hours % 1) * 60);
-      const formattedHours = Math.floor(hours);
-      return `${formattedHours}h ${minutes}min`;
-    }
-
-    function formatTime(time) {
-      return time.padStart(2, '0') + ":00";
-    }
   </script>
 </body>
 </html>

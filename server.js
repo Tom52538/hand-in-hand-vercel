@@ -92,6 +92,50 @@ app.get('/work-hours', (req, res) => {
   });
 });
 
+// API Endpunkt für Admin-Login
+app.post('/admin-login', (req, res) => {
+  const { password } = req.body;
+  if (password === 'admin') {
+    req.session.admin = true;
+    res.json({ message: 'Admin login successful' });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// API Endpunkt zum Abrufen aller Arbeitszeiten (Admin)
+app.get('/admin/work-hours', (req, res) => {
+  if (!req.session.admin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  db.all("SELECT * FROM work_hours", [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ workHours: rows });
+  });
+});
+
+// API Endpunkt zum Herunterladen der CSV-Datei (Admin)
+app.get('/admin/download-csv', (req, res) => {
+  if (!req.session.admin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  db.all("SELECT * FROM work_hours", [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (rows.length > 0) {
+      const csv = convertToCSV(rows);
+      res.header('Content-Type', 'text/csv');
+      res.attachment('arbeitszeiten.csv');
+      return res.send(csv);
+    } else {
+      res.status(404).json({ error: 'No data available' });
+    }
+  });
+});
+
 // Hilfsfunktionen
 function calculateWorkHours(startTime, endTime) {
   const start = new Date(`1970-01-01T${startTime}:00`);
@@ -112,6 +156,29 @@ function calculateBreakTime(hours, comment) {
   } else {
     return 0; // Keine Pause erforderlich
   }
+}
+
+function convertToCSV(data) {
+  if (!data || data.length === 0) {
+    return '';
+  }
+  const csvRows = [];
+  const headers = ["Name", "Datum", "Anfang", "Ende", "Gesamtzeit", "Bemerkung"];
+  csvRows.push(headers.join(','));
+
+  for (const row of data) {
+    const values = [
+      row.name,
+      row.date,
+      row.startTime,
+      row.endTime,
+      `${row.hours} Stunden`,
+      row.comment || ''
+    ];
+    csvRows.push(values.join(','));
+  }
+
+  return csvRows.join('\n');
 }
 
 // Server starten
