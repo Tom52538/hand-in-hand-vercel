@@ -20,14 +20,20 @@
       <label for="date">Datum:</label>
       <input type="date" id="date" name="date" required>
 
-      <label for="hours">Stunden:</label>
-      <input type="number" step="0.01" id="hours" name="hours" required>
+      <label for="startTime">Arbeitsbeginn:</label>
+      <input type="time" id="startTime" name="startTime" required>
+
+      <label for="endTime">Arbeitsende:</label>
+      <input type="time" id="endTime" name="endTime" required>
 
       <button type="submit">Eintragen</button>
     </form>
 
     <h2>Gebuchte Arbeitszeiten</h2>
     <ul id="workHoursList"></ul>
+
+    <h2>Gesamtarbeitszeit</h2>
+    <p id="totalHours"></p>
 
     <button id="downloadCsv">CSV herunterladen</button>
   </div>
@@ -38,12 +44,13 @@
 
       const name = document.getElementById('name').value;
       const date = document.getElementById('date').value;
-      const hours = parseFloat(document.getElementById('hours').value);
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
 
       const response = await fetch('/log-hours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, date, hours })
+        body: JSON.stringify({ name, date, startTime, endTime })
       });
 
       if (response.ok) {
@@ -59,11 +66,24 @@
       const workHoursList = document.getElementById('workHoursList');
       workHoursList.innerHTML = '';
 
+      let totalHours = 0;
+
       data.workHours.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}, Pause: ${entry.break_time}`;
+        listItem.textContent = `Name: ${entry.name}, Datum: ${entry.date}, Stunden: ${entry.hours}`;
         workHoursList.appendChild(listItem);
+
+        const [hours, minutes] = entry.hours.split(' ');
+        totalHours += parseInt(hours) + parseInt(minutes) / 60;
       });
+
+      document.getElementById('totalHours').textContent = `Gesamtarbeitszeit: ${formatHours(totalHours)}`;
+    }
+
+    function formatHours(hours) {
+      const minutes = Math.round((hours % 1) * 60);
+      const formattedHours = Math.floor(hours);
+      return `${formattedHours}h ${minutes}min`;
     }
 
     document.getElementById('downloadCsv').addEventListener('click', async function() {

@@ -18,11 +18,13 @@ db.serialize(() => {
 
 // API Endpunkte
 app.post('/log-hours', (req, res) => {
-  const { name, date, hours } = req.body;
-  const breakTime = calculateBreakTime(hours);
+  const { name, date, startTime, endTime } = req.body;
+  const totalHours = calculateWorkHours(startTime, endTime);
+  const breakTime = calculateBreakTime(totalHours);
+  const netHours = totalHours - breakTime;
 
   const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time) VALUES (?, ?, ?, ?)");
-  stmt.run(name, date, hours, breakTime, function(err) {
+  stmt.run(name, date, netHours, breakTime, function(err) {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -36,7 +38,12 @@ app.get('/work-hours', (req, res) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json({ workHours: rows });
+    const formattedRows = rows.map(row => ({
+      ...row,
+      hours: formatHours(row.hours),
+      break_time: formatHours(row.break_time)
+    }));
+    res.json({ workHours: formattedRows });
   });
 });
 
@@ -58,9 +65,27 @@ app.get('/', (req, res) => {
 });
 
 // Hilfsfunktionen
+function calculateWorkHours(startTime, endTime) {
+  const start = new Date(`1970-01-01T${startTime}:00`);
+  const end = new Date(`1970-01-01T${endTime}:00`);
+  const diff = end - start;
+  return diff / 1000 / 60 / 60; // Stunden
+}
+
 function calculateBreakTime(hours) {
-  // Beispiel: 30 Minuten Pause für jede 6 Stunden Arbeit
-  return Math.floor(hours / 6) * 0.5;
+  if (hours > 9) {
+    return 0.75; // 45 Minuten Pause
+  } else if (hours > 6) {
+    return 0.5; // 30 Minuten Pause
+  } else {
+    return 0; // Keine Pause erforderlich
+  }
+}
+
+function formatHours(hours) {
+  const minutes = Math.round((hours % 1) * 60);
+  const formattedHours = Math.floor(hours);
+  return `${formattedHours}h ${minutes}min`;
 }
 
 function convertToCSV(data) {
