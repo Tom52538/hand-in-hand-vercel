@@ -48,36 +48,23 @@ db.serialize(() => {
 app.post('/log-hours', (req, res) => {
   const { name, date, startTime, endTime, comment } = req.body;
 
-  // Name case-insensitive machen
-  const lowerCaseName = name.toLowerCase();
+  // Überprüfen, ob Arbeitsbeginn vor Arbeitsende liegt
+  if (startTime >= endTime) {
+    return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
+  }
 
-  // Überprüfen, ob bereits ein Eintrag für den Mitarbeiter an diesem Datum existiert
-  db.get("SELECT * FROM work_hours WHERE LOWER(name) = ? AND date = ?", [lowerCaseName, date], (err, row) => {
+  const totalHours = calculateWorkHours(startTime, endTime);
+  const breakTime = calculateBreakTime(totalHours, comment);
+  const netHours = totalHours - breakTime;
+
+  const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  stmt.run(name, date, netHours, breakTime, comment || '', startTime, endTime, function(err) {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    if (row) {
-      return res.status(400).json({ error: 'Es existiert bereits ein Eintrag für diesen Mitarbeiter an diesem Datum.' });
-    }
-
-    // Überprüfen, ob Arbeitsbeginn vor Arbeitsende liegt
-    if (startTime >= endTime) {
-      return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
-    }
-
-    const totalHours = calculateWorkHours(startTime, endTime);
-    const breakTime = calculateBreakTime(totalHours, comment);
-    const netHours = totalHours - breakTime;
-
-    const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    stmt.run(name, date, netHours, breakTime, comment || '', startTime, endTime, function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ id: this.lastID });
-    });
-    stmt.finalize();
+    res.json({ id: this.lastID });
   });
+  stmt.finalize();
 });
 
 // API Endpunkt zum Abrufen der Arbeitszeiten eines Mitarbeiters
@@ -145,7 +132,7 @@ function calculateWorkHours(startTime, endTime) {
 }
 
 function calculateBreakTime(hours, comment) {
-  if (comment && comment.toLowerCase().includes("ohne pause")) {
+  if (comment && (comment.toLowerCase().includes("ohne pause") || comment.toLowerCase().includes("keine pause"))) {
     return 0;
   } else if (comment && comment.toLowerCase().includes("15 minuten")) {
     return 0.25; // 15 Minuten Pause
