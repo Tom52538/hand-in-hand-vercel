@@ -123,6 +123,23 @@ app.get('/admin/download-csv', (req, res) => {
   });
 });
 
+// API Endpunkt zum Löschen der Daten (Admin)
+app.post('/admin/delete-data', (req, res) => {
+  const { confirmDelete } = req.body;
+
+  if (confirmDelete === 'true') {
+    // Daten löschen
+    db.run('DELETE FROM work_hours', function(err) {
+      if (err) {
+        return res.status(500).send('Fehler beim Löschen der Daten.');
+      }
+      res.send('Daten erfolgreich gelöscht.');
+    });
+  } else {
+    res.send('Löschen abgebrochen. Bestätigung erforderlich.');
+  }
+});
+
 // Hilfsfunktionen
 function calculateWorkHours(startTime, endTime) {
   const start = new Date(`1970-01-01T${startTime}:00`);

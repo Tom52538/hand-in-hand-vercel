@@ -45,6 +45,7 @@
     <ul id="adminWorkHoursList"></ul>
 
     <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
+    <button id="adminDeleteData">Alle Arbeitszeiten löschen</button>
   </div>
 
   <script>
@@ -133,6 +134,23 @@
 
     document.getElementById('adminDownloadCsv').addEventListener('click', async function() {
       window.location.href = '/admin/download-csv';
+    });
+
+    document.getElementById('adminDeleteData').addEventListener('click', async function() {
+      const userConfirmed = confirm('Möchten Sie wirklich alle Daten löschen?');
+      if (userConfirmed) {
+        const response = await fetch('/admin/delete-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmDelete: 'true' })
+        });
+
+        const result = await response.text();
+        alert(result);
+        loadAdminWorkHours();
+      } else {
+        alert('Löschen abgebrochen.');
+      }
     });
 
     function formatDate(date) {
