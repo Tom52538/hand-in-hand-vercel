@@ -140,9 +140,9 @@ app.post('/admin/delete-data', (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { confirmDelete } = req.body;
+  const { confirmDelete, password } = req.body;
 
-  if (confirmDelete === 'true') {
+  if (confirmDelete === 'true' && password === 'admin') {
     // Daten löschen
     db.run('DELETE FROM work_hours', function(err) {
       if (err) {
@@ -151,7 +151,7 @@ app.post('/admin/delete-data', (req, res) => {
       res.send('Daten erfolgreich gelöscht.');
     });
   } else {
-    res.send('Löschen abgebrochen. Bestätigung erforderlich.');
+    res.status(401).send('Löschen abgebrochen. Passwort erforderlich oder Bestätigung fehlt.');
   }
 });
 
