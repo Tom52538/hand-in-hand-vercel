@@ -136,6 +136,10 @@ app.get('/admin/download-csv', (req, res) => {
 
 // API Endpunkt zum Löschen der Daten (Admin)
 app.post('/admin/delete-data', (req, res) => {
+  if (!req.session.admin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const { confirmDelete } = req.body;
 
   if (confirmDelete === 'true') {
