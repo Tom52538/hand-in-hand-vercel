@@ -53,18 +53,29 @@ app.post('/log-hours', (req, res) => {
     return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
   }
 
-  const totalHours = calculateWorkHours(startTime, endTime);
-  const breakTime = calculateBreakTime(totalHours, comment);
-  const netHours = totalHours - breakTime;
-
-  const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  stmt.run(name, date, netHours, breakTime, comment || '', startTime, endTime, function(err) {
+  // Überprüfen, ob bereits ein Eintrag für denselben Tag und Mitarbeiter existiert
+  const query = "SELECT * FROM work_hours WHERE name = ? AND date = ?";
+  db.get(query, [name, date], (err, row) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json({ id: this.lastID });
+    if (row) {
+      return res.status(400).json({ error: 'Es existiert bereits ein Eintrag für diesen Mitarbeiter an diesem Tag.' });
+    }
+
+    const totalHours = calculateWorkHours(startTime, endTime);
+    const breakTime = calculateBreakTime(totalHours, comment);
+    const netHours = totalHours - breakTime;
+
+    const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    stmt.run(name, date, netHours, breakTime, comment || '', startTime, endTime, function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ id: this.lastID });
+    });
+    stmt.finalize();
   });
-  stmt.finalize();
 });
 
 // API Endpunkt zum Abrufen der Arbeitszeiten eines Mitarbeiters
