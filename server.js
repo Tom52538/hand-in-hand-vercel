@@ -177,6 +177,12 @@ function calculateBreakTime(hours, comment) {
   }
 }
 
+function convertDecimalHoursToHoursMinutes(decimalHours) {
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 function convertToCSV(data) {
   if (!data || data.length === 0) {
     return '';
@@ -186,9 +192,7 @@ function convertToCSV(data) {
   csvRows.push(headers.join(','));
 
   for (const row of data) {
-    const hours = Math.floor(row.hours);
-    const minutes = Math.round((row.hours - hours) * 60);
-    const formattedHours = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const formattedHours = convertDecimalHoursToHoursMinutes(row.hours);
 
     const values = [
       row.name,
