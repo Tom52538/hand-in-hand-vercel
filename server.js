@@ -191,7 +191,7 @@ function convertToCSV(data) {
       row.date,
       row.startTime,
       row.endTime,
-      `${row.hours} Stunden`,
+      row.hours, // Änderung hier: nur die Zahl der Stunden
       row.comment || ''
     ];
     csvRows.push(values.join(','));
