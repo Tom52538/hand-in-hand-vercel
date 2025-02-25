@@ -186,12 +186,16 @@ function convertToCSV(data) {
   csvRows.push(headers.join(','));
 
   for (const row of data) {
+    const hours = Math.floor(row.hours);
+    const minutes = Math.round((row.hours - hours) * 60);
+    const formattedHours = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
     const values = [
       row.name,
       row.date,
       row.startTime,
       row.endTime,
-      row.hours, // Änderung hier: nur die Zahl der Stunden
+      formattedHours, // Formatiert als Stunden:Minuten
       row.comment || ''
     ];
     csvRows.push(values.join(','));
