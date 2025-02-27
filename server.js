@@ -44,6 +44,40 @@ db.serialize(() => {
   });
 });
 
+// Middleware to check if the user is an admin
+function isAdmin(req, res, next) {
+    // Replace this logic with actual admin verification
+    const isAdminUser = req.session.isAdmin;
+    if (isAdminUser) {
+        next();
+    } else {
+        res.status(403).send('Access denied. Admin privileges required.');
+    }
+}
+
+// New route to update working hours by admin
+app.put('/api/admin/update-hours', isAdmin, (req, res) => {
+    const { userId, date, hours } = req.body;
+    const query = 'UPDATE work_hours SET hours = ? WHERE id = ? AND date = ?';
+    db.run(query, [hours, userId, date], function(err) {
+        if (err) {
+            return res.status(500).send('Error updating working hours.');
+        }
+        res.send('Working hours updated successfully.');
+    });
+});
+
+// New route to fetch all work hours for admin
+app.get('/admin-work-hours', isAdmin, (req, res) => {
+    const query = 'SELECT * FROM work_hours';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            return res.status(500).send('Error fetching work hours.');
+        }
+        res.json(rows);
+    });
+});
+
 // API Endpunkt zum Erfassen der Arbeitszeiten
 app.post('/log-hours', (req, res) => {
   const { name, date, startTime, endTime, comment } = req.body;
@@ -54,97 +88,51 @@ app.post('/log-hours', (req, res) => {
   }
 
   // Überprüfen, ob bereits ein Eintrag für denselben Tag und Mitarbeiter existiert
-  const query = "SELECT * FROM work_hours WHERE name = ? AND date = ?";
+  const checkQuery = 'SELECT * FROM work_hours WHERE name = ? AND date = ?';
+  db.get(checkQuery, [name, date], (err, row) => {
+    if (err) {
+      return res.status(500).send('Fehler beim Überprüfen der Daten.');
+    }
+
+    if (row) {
+      return res.status(400).json({ error: 'Eintrag für diesen Tag existiert bereits.' });
+    }
+
+    const hours = calculateWorkHours(startTime, endTime);
+    const breakTime = calculateBreakTime(hours, comment);
+    const netHours = hours - breakTime;
+
+    const insertQuery = 'INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    db.run(insertQuery, [name, date, netHours, breakTime, comment, startTime, endTime], function(err) {
+      if (err) {
+        return res.status(500).send('Fehler beim Speichern der Daten.');
+      }
+      res.send('Daten erfolgreich gespeichert.');
+    });
+  });
+});
+
+// API Endpunkt zum Abrufen der Arbeitszeiten
+app.get('/get-hours', (req, res) => {
+  const { name, date } = req.query;
+  const query = 'SELECT * FROM work_hours WHERE name = ? AND date = ?';
   db.get(query, [name, date], (err, row) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).send('Fehler beim Abrufen der Daten.');
     }
-    if (row) {
-      return res.status(400).json({ error: 'Es existiert bereits ein Eintrag für diesen Mitarbeiter an diesem Tag.' });
+    if (!row) {
+      return res.status(404).send('Keine Daten gefunden.');
     }
-
-    const totalHours = calculateWorkHours(startTime, endTime);
-    const breakTime = calculateBreakTime(totalHours, comment);
-    const netHours = totalHours - breakTime;
-
-    const stmt = db.prepare("INSERT INTO work_hours (name, date, hours, break_time, comment, startTime, endTime) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    stmt.run(name, date, netHours, breakTime, comment || '', startTime, endTime, function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ id: this.lastID });
-    });
-    stmt.finalize();
+    res.json(row);
   });
 });
 
-// API Endpunkt zum Abrufen der Arbeitszeiten eines Mitarbeiters
-app.get('/work-hours', (req, res) => {
-  const name = req.query.name;
-  const query = "SELECT * FROM work_hours WHERE LOWER(name) = ?";
-  db.all(query, [name.toLowerCase()], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ workHours: rows });
-  });
-});
-
-// API Endpunkt für Admin-Login
-app.post('/admin-login', (req, res) => {
-  const { password } = req.body;
-  if (password === 'admin') {
-    req.session.admin = true;
-    res.json({ message: 'Admin login successful' });
-  } else {
-    res.status(401).json({ error: 'Invalid password' });
-  }
-});
-
-// API Endpunkt zum Abrufen aller Arbeitszeiten (Admin)
-app.get('/admin/work-hours', (req, res) => {
-  if (!req.session.admin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ workHours: rows });
-  });
-});
-
-// API Endpunkt zum Herunterladen der CSV-Datei (Admin)
-app.get('/admin/download-csv', (req, res) => {
-  if (!req.session.admin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  db.all("SELECT * FROM work_hours", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (rows.length > 0) {
-      const csv = convertToCSV(rows);
-      res.header('Content-Type', 'text/csv');
-      res.attachment('arbeitszeiten.csv');
-      return res.send(csv);
-    } else {
-      res.status(404).json({ error: 'No data available' });
-    }
-  });
-});
-
-// API Endpunkt zum Löschen der Daten (Admin)
-app.post('/admin/delete-data', (req, res) => {
-  if (!req.session.admin) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  const { confirmDelete, password } = req.body;
-
-  if (confirmDelete === 'true' && password === 'admin') {
-    // Daten löschen
-    db.run('DELETE FROM work_hours', function(err) {
+// API Endpunkt zum Löschen der Arbeitszeiten
+app.delete('/delete-hours', (req, res) => {
+  const { password, confirm } = req.body;
+  if (password === 'dein-passwort' && confirm === true) {
+    const deleteQuery = 'DELETE FROM work_hours';
+    db.run(deleteQuery, function(err) {
       if (err) {
         return res.status(500).send('Fehler beim Löschen der Daten.');
       }
@@ -153,6 +141,17 @@ app.post('/admin/delete-data', (req, res) => {
   } else {
     res.status(401).send('Löschen abgebrochen. Passwort erforderlich oder Bestätigung fehlt.');
   }
+});
+
+// Admin Login Endpunkt
+app.post('/admin-login', (req, res) => {
+    const { password } = req.body;
+    if (password === 'dein-admin-passwort') {
+        req.session.isAdmin = true;
+        res.send('Admin angemeldet.');
+    } else {
+        res.status(401).send('Ungültiges Passwort.');
+    }
 });
 
 // Hilfsfunktionen
