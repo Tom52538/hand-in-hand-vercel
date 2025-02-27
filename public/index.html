@@ -86,7 +86,7 @@
 
       if (data) {
         const listItem = document.createElement('li');
-        listItem.textContent = `Datum: ${formatDate(data.date)}, Stunden: ${data.hours}, Bemerkung: ${data.comment}`;
+        listItem.textContent = `ID: ${data.id}, Datum: ${formatDate(data.date)}, Stunden: ${data.hours}, Bemerkung: ${data.comment}`;
         workHoursList.appendChild(listItem);
       }
 
@@ -119,7 +119,7 @@
 
       data.forEach(entry => {
         const listItem = document.createElement('li');
-        listItem.textContent = `Name: ${entry.name}, Datum: ${formatDate(entry.date)}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
+        listItem.textContent = `ID: ${entry.id}, Name: ${entry.name}, Datum: ${formatDate(entry.date)}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
         adminWorkHoursList.appendChild(listItem);
       });
     }

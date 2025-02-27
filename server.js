@@ -146,7 +146,7 @@ app.delete('/delete-hours', (req, res) => {
 // Admin Login Endpunkt
 app.post('/admin-login', (req, res) => {
     const { password } = req.body;
-    if (password === 'dein-admin-passwort') {
+    if (password === 'admin') { // Hier wird das Passwort überprüft
         req.session.isAdmin = true;
         res.send('Admin angemeldet.');
     } else {
