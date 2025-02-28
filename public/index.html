@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arbeitszeiterfassung</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -41,47 +46,49 @@
       <button type="submit">Anmelden</button>
     </form>
 
-    <!-- Datensatz bearbeiten Block weiter oben -->
-    <h2>Datensatz bearbeiten</h2>
-    <form id="editForm">
-      <input type="hidden" id="editId" name="id">
-      <label for="editName">Name:</label>
-      <input type="text" id="editName" name="name">
+    <!-- Admin-Funktionen sind standardmäßig ausgeblendet -->
+    <div id="adminPanel" class="hidden">
+      <h2>Datensatz bearbeiten</h2>
+      <form id="editForm">
+        <input type="hidden" id="editId" name="id">
+        <label for="editName">Name:</label>
+        <input type="text" id="editName" name="name">
 
-      <label for="editDate">Datum:</label>
-      <input type="date" id="editDate" name="date">
+        <label for="editDate">Datum:</label>
+        <input type="date" id="editDate" name="date">
 
-      <label for="editStartTime">Arbeitsbeginn:</label>
-      <input type="time" id="editStartTime" name="startTime" required>
+        <label for="editStartTime">Arbeitsbeginn:</label>
+        <input type="time" id="editStartTime" name="startTime" required>
 
-      <label for="editEndTime">Arbeitsende:</label>
-      <input type="time" id="editEndTime" name="endTime" required>
+        <label for="editEndTime">Arbeitsende:</label>
+        <input type="time" id="editEndTime" name="endTime" required>
 
-      <label for="editComment">Bemerkung:</label>
-      <input type="text" id="editComment" name="comment">
+        <label for="editComment">Bemerkung:</label>
+        <input type="text" id="editComment" name="comment">
 
-      <button type="button" onclick="saveChanges()">Speichern</button>
-    </form>
+        <button type="button" onclick="saveChanges()">Speichern</button>
+      </form>
 
-    <h2>Admin Panel</h2>
-    <table id="workHoursTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Datum</th>
-          <th>Stunden</th>
-          <th>Bemerkung</th>
-          <th>Aktionen</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Datensätze werden hier dynamisch geladen -->
-      </tbody>
-    </table>
+      <h2>Admin Panel</h2>
+      <table id="workHoursTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Datum</th>
+            <th>Stunden</th>
+            <th>Bemerkung</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Datensätze werden hier dynamisch geladen -->
+        </tbody>
+      </table>
 
-    <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
-    <button id="adminDeleteData">Alle Arbeitszeiten löschen</button>
+      <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
+      <button id="adminDeleteData">Alle Arbeitszeiten löschen</button>
+    </div>
   </div>
 
   <script>
@@ -143,8 +150,12 @@
       });
 
       const result = await response.text();
-      alert(result);
-      loadAdminWorkHours();
+      if (result === 'Admin angemeldet.') {
+        document.getElementById('adminPanel').classList.remove('hidden');
+        loadAdminWorkHours();
+      } else {
+        alert(result);
+      }
     });
 
     async function loadAdminWorkHours() {
@@ -253,9 +264,6 @@
       const [year, month, day] = date.split('-');
       return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
-
-    // Lade die Arbeitszeiten beim Laden der Seite
-    loadAdminWorkHours();
   </script>
 </body>
 </html>
