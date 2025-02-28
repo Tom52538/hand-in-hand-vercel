@@ -41,8 +41,40 @@
       <button type="submit">Anmelden</button>
     </form>
 
-    <h2>Admin: Alle Arbeitszeiten</h2>
-    <ul id="adminWorkHoursList"></ul>
+    <h2>Admin Panel</h2>
+    <table id="workHoursTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Datum</th>
+          <th>Stunden</th>
+          <th>Bemerkung</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Datensätze werden hier dynamisch geladen -->
+      </tbody>
+    </table>
+
+    <h2>Datensatz bearbeiten</h2>
+    <form id="editForm">
+      <input type="hidden" id="editId" name="id">
+      <label for="editName">Name:</label>
+      <input type="text" id="editName" name="name">
+
+      <label for="editDate">Datum:</label>
+      <input type="date" id="editDate" name="date">
+
+      <label for="editHours">Stunden:</label>
+      <input type="number" step="0.01" id="editHours" name="hours">
+
+      <label for="editComment">Bemerkung:</label>
+      <input type="text" id="editComment" name="comment">
+
+      <button type="button" onclick="saveChanges()">Speichern</button>
+    </form>
 
     <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
     <button id="adminDeleteData">Alle Arbeitszeiten löschen</button>
@@ -114,14 +146,64 @@
     async function loadAdminWorkHours() {
       const response = await fetch('/admin-work-hours');
       const data = await response.json();
-      const adminWorkHoursList = document.getElementById('adminWorkHoursList');
-      adminWorkHoursList.innerHTML = '';
+      const tableBody = document.querySelector('#workHoursTable tbody');
+      tableBody.innerHTML = '';
 
       data.forEach(entry => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `ID: ${entry.id}, Name: ${entry.name}, Datum: ${formatDate(entry.date)}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
-        adminWorkHoursList.appendChild(listItem);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.id}</td>
+          <td>${entry.name}</td>
+          <td>${entry.date}</td>
+          <td>${entry.hours}</td>
+          <td>${entry.comment}</td>
+          <td>
+            <button onclick="editEntry(${entry.id}, '${entry.name}', '${entry.date}', ${entry.hours}, '${entry.comment}')">Bearbeiten</button>
+            <button onclick="deleteEntry(${entry.id})">Löschen</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
       });
+    }
+
+    function editEntry(id, name, date, hours, comment) {
+      document.getElementById('editId').value = id;
+      document.getElementById('editName').value = name;
+      document.getElementById('editDate').value = date;
+      document.getElementById('editHours').value = hours;
+      document.getElementById('editComment').value = comment;
+    }
+
+    async function saveChanges() {
+      const id = document.getElementById('editId').value;
+      const name = document.getElementById('editName').value;
+      const date = document.getElementById('editDate').value;
+      const hours = document.getElementById('editHours').value;
+      const comment = document.getElementById('editComment').value;
+
+      const response = await fetch('/api/admin/update-hours', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id, name, date, hours, comment })
+      });
+
+      const result = await response.text();
+      alert(result);
+      loadAdminWorkHours();
+    }
+
+    async function deleteEntry(id) {
+      const confirmDelete = confirm('Möchten Sie diesen Eintrag wirklich löschen?');
+      if (confirmDelete) {
+        const response = await fetch(`/api/admin/delete-hours/${id}`, {
+          method: 'DELETE'
+        });
+        const result = await response.text();
+        alert(result);
+        loadAdminWorkHours();
+      }
     }
 
     document.getElementById('adminDownloadCsv').addEventListener('click', async function() {
@@ -165,6 +247,9 @@
       const [year, month, day] = date.split('-');
       return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
+
+    // Lade die Arbeitszeiten beim Laden der Seite
+    loadAdminWorkHours();
   </script>
 </body>
 </html>

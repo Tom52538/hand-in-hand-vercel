@@ -79,6 +79,30 @@ app.get('/admin-download-csv', isAdmin, (req, res) => {
     });
 });
 
+// Update-Endpunkt
+app.put('/api/admin/update-hours', isAdmin, (req, res) => {
+    const { id, name, date, hours, comment } = req.body;
+    const query = 'UPDATE work_hours SET name = ?, date = ?, hours = ?, comment = ? WHERE id = ?';
+    db.run(query, [name, date, hours, comment, id], function(err) {
+        if (err) {
+            return res.status(500).send('Error updating working hours.');
+        }
+        res.send('Working hours updated successfully.');
+    });
+});
+
+// Delete-Endpunkt
+app.delete('/api/admin/delete-hours/:id', isAdmin, (req, res) => {
+    const { id } = req.params;
+    const query = 'DELETE FROM work_hours WHERE id = ?';
+    db.run(query, [id], function(err) {
+        if (err) {
+            return res.status(500).send('Error deleting working hours.');
+        }
+        res.send('Working hours deleted successfully.');
+    });
+});
+
 // API Endpunkt zum Erfassen der Arbeitszeiten
 app.post('/log-hours', (req, res) => {
   const { name, date, startTime, endTime, comment } = req.body;
