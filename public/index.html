@@ -41,6 +41,28 @@
       <button type="submit">Anmelden</button>
     </form>
 
+    <!-- Datensatz bearbeiten Block weiter oben -->
+    <h2>Datensatz bearbeiten</h2>
+    <form id="editForm">
+      <input type="hidden" id="editId" name="id">
+      <label for="editName">Name:</label>
+      <input type="text" id="editName" name="name">
+
+      <label for="editDate">Datum:</label>
+      <input type="date" id="editDate" name="date">
+
+      <label for="editStartTime">Arbeitsbeginn:</label>
+      <input type="time" id="editStartTime" name="startTime" required>
+
+      <label for="editEndTime">Arbeitsende:</label>
+      <input type="time" id="editEndTime" name="endTime" required>
+
+      <label for="editComment">Bemerkung:</label>
+      <input type="text" id="editComment" name="comment">
+
+      <button type="button" onclick="saveChanges()">Speichern</button>
+    </form>
+
     <h2>Admin Panel</h2>
     <table id="workHoursTable">
       <thead>
@@ -57,24 +79,6 @@
         <!-- Datensätze werden hier dynamisch geladen -->
       </tbody>
     </table>
-
-    <h2>Datensatz bearbeiten</h2>
-    <form id="editForm">
-      <input type="hidden" id="editId" name="id">
-      <label for="editName">Name:</label>
-      <input type="text" id="editName" name="name">
-
-      <label for="editDate">Datum:</label>
-      <input type="date" id="editDate" name="date">
-
-      <label for="editHours">Stunden:</label>
-      <input type="number" step="0.01" id="editHours" name="hours">
-
-      <label for="editComment">Bemerkung:</label>
-      <input type="text" id="editComment" name="comment">
-
-      <button type="button" onclick="saveChanges()">Speichern</button>
-    </form>
 
     <button id="adminDownloadCsv">Alle Arbeitszeiten als CSV herunterladen</button>
     <button id="adminDeleteData">Alle Arbeitszeiten löschen</button>
@@ -158,7 +162,7 @@
           <td>${entry.hours}</td>
           <td>${entry.comment}</td>
           <td>
-            <button onclick="editEntry(${entry.id}, '${entry.name}', '${entry.date}', ${entry.hours}, '${entry.comment}')">Bearbeiten</button>
+            <button onclick="editEntry(${entry.id}, '${entry.name}', '${entry.date}', '${entry.startTime}', '${entry.endTime}', '${entry.comment}')">Bearbeiten</button>
             <button onclick="deleteEntry(${entry.id})">Löschen</button>
           </td>
         `;
@@ -166,11 +170,12 @@
       });
     }
 
-    function editEntry(id, name, date, hours, comment) {
+    function editEntry(id, name, date, startTime, endTime, comment) {
       document.getElementById('editId').value = id;
       document.getElementById('editName').value = name;
       document.getElementById('editDate').value = date;
-      document.getElementById('editHours').value = hours;
+      document.getElementById('editStartTime').value = startTime;
+      document.getElementById('editEndTime').value = endTime;
       document.getElementById('editComment').value = comment;
     }
 
@@ -178,7 +183,8 @@
       const id = document.getElementById('editId').value;
       const name = document.getElementById('editName').value;
       const date = document.getElementById('editDate').value;
-      const hours = document.getElementById('editHours').value;
+      const startTime = document.getElementById('editStartTime').value;
+      const endTime = document.getElementById('editEndTime').value;
       const comment = document.getElementById('editComment').value;
 
       const response = await fetch('/api/admin/update-hours', {
@@ -186,7 +192,7 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ id, name, date, hours, comment })
+        body: JSON.stringify({ id, name, date, startTime, endTime, comment })
       });
 
       const result = await response.text();

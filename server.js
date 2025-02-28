@@ -81,9 +81,19 @@ app.get('/admin-download-csv', isAdmin, (req, res) => {
 
 // Update-Endpunkt
 app.put('/api/admin/update-hours', isAdmin, (req, res) => {
-    const { id, name, date, hours, comment } = req.body;
-    const query = 'UPDATE work_hours SET name = ?, date = ?, hours = ?, comment = ? WHERE id = ?';
-    db.run(query, [name, date, hours, comment, id], function(err) {
+    const { id, name, date, startTime, endTime, comment } = req.body;
+
+    // Überprüfen, ob Arbeitsbeginn vor Arbeitsende liegt
+    if (startTime >= endTime) {
+        return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
+    }
+
+    const hours = calculateWorkHours(startTime, endTime);
+    const breakTime = calculateBreakTime(hours, comment);
+    const netHours = hours - breakTime;
+
+    const query = 'UPDATE work_hours SET name = ?, date = ?, hours = ?, break_time = ?, comment = ?, startTime = ?, endTime = ? WHERE id = ?';
+    db.run(query, [name, date, netHours, breakTime, comment, startTime, endTime, id], function(err) {
         if (err) {
             return res.status(500).send('Error updating working hours.');
         }
