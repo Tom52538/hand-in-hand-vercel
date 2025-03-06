@@ -92,11 +92,14 @@
   </div>
 
   <script>
+    // Event listener für Namensänderung
     document.getElementById('name').addEventListener('input', async function() {
-      const name = this.value;
-      if (name) {
-        await loadWorkHours(name);
-      }
+      await loadWorkHours();
+    });
+    
+    // Event listener für Datumänderung
+    document.getElementById('date').addEventListener('change', async function() {
+      await loadWorkHours();
     });
 
     document.getElementById('workHoursForm').addEventListener('submit', async function(event) {
@@ -118,23 +121,34 @@
 
       const result = await response.text();
       alert(result);
-      loadWorkHours(name);
+      await loadWorkHours();
     });
 
-    async function loadWorkHours(name) {
-      const response = await fetch(`/get-hours?name=${encodeURIComponent(name)}`);
-      const data = await response.json();
+    async function loadWorkHours() {
+      const name = document.getElementById('name').value;
+      const date = document.getElementById('date').value;
+      
       const workHoursList = document.getElementById('workHoursList');
       workHoursList.innerHTML = '';
-
-      if (data) {
-        const listItem = document.createElement('li');
-        listItem.textContent = `ID: ${data.id}, Datum: ${formatDate(data.date)}, Stunden: ${data.hours}, Bemerkung: ${data.comment}`;
-        workHoursList.appendChild(listItem);
+      
+      if (!name || !date) {
+        document.getElementById('totalHours').textContent = `Gesamtstunden: 0`;
+        return;
       }
+      
+      const response = await fetch(`/get-hours?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}`);
+      
+      if (response.status === 404) {
+        document.getElementById('totalHours').textContent = `Gesamtstunden: 0`;
+        return;
+      }
+      
+      const data = await response.json();
+      const listItem = document.createElement('li');
+      listItem.textContent = `ID: ${data.id}, Datum: ${formatDate(data.date)}, Stunden: ${data.hours}, Bemerkung: ${data.comment}`;
+      workHoursList.appendChild(listItem);
 
-      const totalHoursElement = document.getElementById('totalHours');
-      totalHoursElement.textContent = `Gesamtstunden: ${data ? data.hours : 0}`;
+      document.getElementById('totalHours').textContent = `Gesamtstunden: ${data.hours}`;
     }
 
     document.getElementById('adminLoginForm').addEventListener('submit', async function(event) {
