@@ -92,16 +92,12 @@
   </div>
 
   <script>
-    // Event listener für Namensänderung
+    // Sobald sich der Name ändert, laden wir alle Einträge neu
     document.getElementById('name').addEventListener('input', async function() {
       await loadWorkHours();
     });
     
-    // Event listener für Datumänderung
-    document.getElementById('date').addEventListener('change', async function() {
-      await loadWorkHours();
-    });
-
+    // Das Formular zum Eintragen neuer Arbeitszeiten
     document.getElementById('workHoursForm').addEventListener('submit', async function(event) {
       event.preventDefault();
 
@@ -121,36 +117,52 @@
 
       const result = await response.text();
       alert(result);
+
+      // Nach dem Eintragen erneut alle Einträge laden
       await loadWorkHours();
     });
 
+    // Holt ALLE Arbeitszeiten für den eingegebenen Namen
     async function loadWorkHours() {
       const name = document.getElementById('name').value;
-      const date = document.getElementById('date').value;
-      
       const workHoursList = document.getElementById('workHoursList');
+      const totalHoursElement = document.getElementById('totalHours');
+
+      // Falls kein Name eingetragen ist, abbrechen
+      if (!name) {
+        workHoursList.innerHTML = '';
+        totalHoursElement.textContent = 'Gesamtstunden: 0';
+        return;
+      }
+
+      // Daten vom neuen Endpunkt /get-all-hours laden
+      const response = await fetch(`/get-all-hours?name=${encodeURIComponent(name)}`);
+      if (!response.ok) {
+        // Wenn z.B. 404 oder 500 zurückkommt
+        workHoursList.innerHTML = '';
+        totalHoursElement.textContent = 'Gesamtstunden: 0';
+        return;
+      }
+
+      const data = await response.json(); // Das ist ein Array mit allen Einträgen
       workHoursList.innerHTML = '';
       
-      if (!name || !date) {
-        document.getElementById('totalHours').textContent = `Gesamtstunden: 0`;
-        return;
-      }
-      
-      const response = await fetch(`/get-hours?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}`);
-      
-      if (response.status === 404) {
-        document.getElementById('totalHours').textContent = `Gesamtstunden: 0`;
-        return;
-      }
-      
-      const data = await response.json();
-      const listItem = document.createElement('li');
-      listItem.textContent = `ID: ${data.id}, Datum: ${formatDate(data.date)}, Stunden: ${data.hours}, Bemerkung: ${data.comment}`;
-      workHoursList.appendChild(listItem);
+      let sumHours = 0;
 
-      document.getElementById('totalHours').textContent = `Gesamtstunden: ${data.hours}`;
+      data.forEach(entry => {
+        // Für jeden Eintrag ein <li> anlegen
+        const listItem = document.createElement('li');
+        listItem.textContent = `ID: ${entry.id}, Datum: ${formatDate(entry.date)}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
+        workHoursList.appendChild(listItem);
+
+        sumHours += entry.hours;
+      });
+
+      // Gesamtstunden anzeigen
+      totalHoursElement.textContent = `Gesamtstunden: ${sumHours}`;
     }
 
+    // Admin-Login
     document.getElementById('adminLoginForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       const password = document.getElementById('adminPassword').value;
@@ -172,6 +184,7 @@
       }
     });
 
+    // Admin: alle Arbeitszeiten laden
     async function loadAdminWorkHours() {
       const response = await fetch('/admin-work-hours');
       const data = await response.json();

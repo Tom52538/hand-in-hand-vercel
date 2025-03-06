@@ -22,7 +22,16 @@ app.use(session({
 const db = new sqlite3.Database('./work_hours.db');
 
 db.serialize(() => {
-  db.run("CREATE TABLE IF NOT EXISTS work_hours (id INTEGER PRIMARY KEY, name TEXT, date TEXT, hours REAL, break_time REAL, comment TEXT, startTime TEXT, endTime TEXT)");
+  db.run(`CREATE TABLE IF NOT EXISTS work_hours (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    date TEXT,
+    hours REAL,
+    break_time REAL,
+    comment TEXT,
+    startTime TEXT,
+    endTime TEXT
+  )`);
 
   // Füge die 'comment', 'startTime', 'endTime' Felder hinzu, falls sie noch nicht existieren
   db.all("PRAGMA table_info(work_hours)", [], (err, rows) => {
@@ -46,71 +55,71 @@ db.serialize(() => {
 
 // Middleware to check if the user is an admin
 function isAdmin(req, res, next) {
-    const isAdminUser = req.session.isAdmin;
-    if (isAdminUser) {
-        next();
-    } else {
-        res.status(403).send('Access denied. Admin privileges required.');
-    }
+  const isAdminUser = req.session.isAdmin;
+  if (isAdminUser) {
+    next();
+  } else {
+    res.status(403).send('Access denied. Admin privileges required.');
+  }
 }
 
 // New route to fetch all work hours for admin
 app.get('/admin-work-hours', isAdmin, (req, res) => {
-    const query = 'SELECT * FROM work_hours';
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send('Error fetching work hours.');
-        }
-        res.json(rows);
-    });
+  const query = 'SELECT * FROM work_hours';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      return res.status(500).send('Error fetching work hours.');
+    }
+    res.json(rows);
+  });
 });
 
 // New route to download all work hours as CSV for admin
 app.get('/admin-download-csv', isAdmin, (req, res) => {
-    const query = 'SELECT * FROM work_hours';
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send('Error fetching work hours.');
-        }
-        const csv = convertToCSV(rows);
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="arbeitszeiten.csv"');
-        res.send(csv);
-    });
+  const query = 'SELECT * FROM work_hours';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      return res.status(500).send('Error fetching work hours.');
+    }
+    const csv = convertToCSV(rows);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="arbeitszeiten.csv"');
+    res.send(csv);
+  });
 });
 
 // Update-Endpunkt
 app.put('/api/admin/update-hours', isAdmin, (req, res) => {
-    const { id, name, date, startTime, endTime, comment } = req.body;
+  const { id, name, date, startTime, endTime, comment } = req.body;
 
-    // Überprüfen, ob Arbeitsbeginn vor Arbeitsende liegt
-    if (startTime >= endTime) {
-        return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
+  // Überprüfen, ob Arbeitsbeginn vor Arbeitsende liegt
+  if (startTime >= endTime) {
+    return res.status(400).json({ error: 'Arbeitsbeginn darf nicht später als Arbeitsende sein.' });
+  }
+
+  const hours = calculateWorkHours(startTime, endTime);
+  const breakTime = calculateBreakTime(hours, comment);
+  const netHours = hours - breakTime;
+
+  const query = 'UPDATE work_hours SET name = ?, date = ?, hours = ?, break_time = ?, comment = ?, startTime = ?, endTime = ? WHERE id = ?';
+  db.run(query, [name, date, netHours, breakTime, comment, startTime, endTime, id], function(err) {
+    if (err) {
+      return res.status(500).send('Error updating working hours.');
     }
-
-    const hours = calculateWorkHours(startTime, endTime);
-    const breakTime = calculateBreakTime(hours, comment);
-    const netHours = hours - breakTime;
-
-    const query = 'UPDATE work_hours SET name = ?, date = ?, hours = ?, break_time = ?, comment = ?, startTime = ?, endTime = ? WHERE id = ?';
-    db.run(query, [name, date, netHours, breakTime, comment, startTime, endTime, id], function(err) {
-        if (err) {
-            return res.status(500).send('Error updating working hours.');
-        }
-        res.send('Working hours updated successfully.');
-    });
+    res.send('Working hours updated successfully.');
+  });
 });
 
 // Delete-Endpunkt
 app.delete('/api/admin/delete-hours/:id', isAdmin, (req, res) => {
-    const { id } = req.params;
-    const query = 'DELETE FROM work_hours WHERE id = ?';
-    db.run(query, [id], function(err) {
-        if (err) {
-            return res.status(500).send('Error deleting working hours.');
-        }
-        res.send('Working hours deleted successfully.');
-    });
+  const { id } = req.params;
+  const query = 'DELETE FROM work_hours WHERE id = ?';
+  db.run(query, [id], function(err) {
+    if (err) {
+      return res.status(500).send('Error deleting working hours.');
+    }
+    res.send('Working hours deleted successfully.');
+  });
 });
 
 // API Endpunkt zum Erfassen der Arbeitszeiten
@@ -147,7 +156,29 @@ app.post('/log-hours', (req, res) => {
   });
 });
 
-// API Endpunkt zum Abrufen der Arbeitszeiten
+/**
+ * NEUER GET-Endpunkt, um ALLE Einträge für einen Namen abzurufen.
+ * Wenn man die Einträge nicht nach Datum filtern möchte, kann man
+ * in der WHERE-Klausel nur nach "name" filtern.
+ */
+app.get('/get-all-hours', (req, res) => {
+  const { name } = req.query;
+  if (!name) {
+    return res.status(400).send('Name ist erforderlich.');
+  }
+
+  const query = 'SELECT * FROM work_hours WHERE name = ? ORDER BY date ASC';
+  db.all(query, [name], (err, rows) => {
+    if (err) {
+      return res.status(500).send('Fehler beim Abrufen der Daten.');
+    }
+    // Wenn keine Einträge vorhanden sind, geben wir einfach ein leeres Array zurück
+    res.json(rows);
+  });
+});
+
+// API Endpunkt zum Abrufen der Arbeitszeiten für genau EIN Datum (wie vorher)
+// Bleibt erhalten, falls man es weiterhin für bestimmte Zwecke benötigt
 app.get('/get-hours', (req, res) => {
   const { name, date } = req.query;
   const query = 'SELECT * FROM work_hours WHERE name = ? AND date = ?';
@@ -180,13 +211,13 @@ app.delete('/delete-hours', (req, res) => {
 
 // Admin Login Endpunkt
 app.post('/admin-login', (req, res) => {
-    const { password } = req.body;
-    if (password === 'admin') {
-        req.session.isAdmin = true;
-        res.send('Admin angemeldet.');
-    } else {
-        res.status(401).send('Ungültiges Passwort.');
-    }
+  const { password } = req.body;
+  if (password === 'admin') {
+    req.session.isAdmin = true;
+    res.send('Admin angemeldet.');
+  } else {
+    res.status(401).send('Ungültiges Passwort.');
+  }
 });
 
 // Hilfsfunktionen
