@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arbeitszeiterfassung</title>
-  <link rel="stylesheet" href="style.css">
+  <!-- Absoluter Pfad, damit die CSS-Datei aus dem public-Ordner geladen wird -->
+  <link rel="stylesheet" href="/style.css">
   <style>
     .hidden {
       display: none;
@@ -97,28 +98,21 @@
       await loadWorkHours();
     });
     
-    // Das Formular zum Eintragen neuer Arbeitszeiten
+    // Formular zum Eintragen neuer Arbeitszeiten
     document.getElementById('workHoursForm').addEventListener('submit', async function(event) {
       event.preventDefault();
-
       const name = document.getElementById('name').value;
       const date = document.getElementById('date').value;
       const startTime = document.getElementById('startTime').value;
       const endTime = document.getElementById('endTime').value;
       const comment = document.getElementById('comment').value;
-
       const response = await fetch('/log-hours', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, date, startTime, endTime, comment })
       });
-
       const result = await response.text();
       alert(result);
-
-      // Nach dem Eintragen erneut alle Einträge laden
       await loadWorkHours();
     });
 
@@ -127,38 +121,26 @@
       const name = document.getElementById('name').value;
       const workHoursList = document.getElementById('workHoursList');
       const totalHoursElement = document.getElementById('totalHours');
-
-      // Falls kein Name eingetragen ist, abbrechen
       if (!name) {
         workHoursList.innerHTML = '';
         totalHoursElement.textContent = 'Gesamtstunden: 0';
         return;
       }
-
-      // Daten vom neuen Endpunkt /get-all-hours laden
       const response = await fetch(`/get-all-hours?name=${encodeURIComponent(name)}`);
       if (!response.ok) {
-        // Wenn z.B. 404 oder 500 zurückkommt
         workHoursList.innerHTML = '';
         totalHoursElement.textContent = 'Gesamtstunden: 0';
         return;
       }
-
-      const data = await response.json(); // Das ist ein Array mit allen Einträgen
+      const data = await response.json();
       workHoursList.innerHTML = '';
-      
       let sumHours = 0;
-
       data.forEach(entry => {
-        // Für jeden Eintrag ein <li> anlegen
         const listItem = document.createElement('li');
         listItem.textContent = `ID: ${entry.id}, Datum: ${formatDate(entry.date)}, Stunden: ${entry.hours}, Bemerkung: ${entry.comment}`;
         workHoursList.appendChild(listItem);
-
         sumHours += entry.hours;
       });
-
-      // Gesamtstunden anzeigen
       totalHoursElement.textContent = `Gesamtstunden: ${sumHours}`;
     }
 
@@ -166,15 +148,11 @@
     document.getElementById('adminLoginForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       const password = document.getElementById('adminPassword').value;
-
       const response = await fetch('/admin-login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
       });
-
       const result = await response.text();
       if (result === 'Admin angemeldet.') {
         document.getElementById('adminPanel').classList.remove('hidden');
@@ -184,13 +162,12 @@
       }
     });
 
-    // Admin: alle Arbeitszeiten laden
+    // Admin: Alle Arbeitszeiten laden
     async function loadAdminWorkHours() {
       const response = await fetch('/admin-work-hours');
       const data = await response.json();
       const tableBody = document.querySelector('#workHoursTable tbody');
       tableBody.innerHTML = '';
-
       data.forEach(entry => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -224,15 +201,11 @@
       const startTime = document.getElementById('editStartTime').value;
       const endTime = document.getElementById('editEndTime').value;
       const comment = document.getElementById('editComment').value;
-
       const response = await fetch('/api/admin/update-hours', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, name, date, startTime, endTime, comment })
       });
-
       const result = await response.text();
       alert(result);
       loadAdminWorkHours();
@@ -241,9 +214,7 @@
     async function deleteEntry(id) {
       const confirmDelete = confirm('Möchten Sie diesen Eintrag wirklich löschen?');
       if (confirmDelete) {
-        const response = await fetch(`/api/admin/delete-hours/${id}`, {
-          method: 'DELETE'
-        });
+        const response = await fetch(`/api/admin/delete-hours/${id}`, { method: 'DELETE' });
         const result = await response.text();
         alert(result);
         loadAdminWorkHours();
@@ -270,12 +241,9 @@
         if (password) {
           const response = await fetch('/delete-hours', {
             method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ confirmDelete: 'true', password })
           });
-
           const result = await response.text();
           alert(result);
           loadAdminWorkHours();

@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(bodyParser.json());
@@ -186,7 +186,7 @@ app.get('/get-all-hours', (req, res) => {
     if (err) {
       return res.status(500).send('Fehler beim Abrufen der Daten.');
     }
-    res.json(rows); // Gibt alle Einträge für diesen Namen zurück
+    res.json(rows);
   });
 });
 
@@ -273,7 +273,6 @@ function convertToCSV(data) {
 
   for (const row of data) {
     const formattedHours = convertDecimalHoursToHoursMinutes(row.hours);
-
     const values = [
       row.name,
       row.date,
@@ -288,7 +287,13 @@ function convertToCSV(data) {
   return csvRows.join('\n');
 }
 
-// Server starten
-app.listen(port, () => {
-  console.log(`Server läuft auf http://localhost:${port}`);
-});
+// Server starten oder App exportieren
+if (process.env.VERCEL) {
+  // In der Vercel-Umgebung exportieren wir die App als serverless Funktion
+  module.exports = app;
+} else {
+  // Lokal starten
+  app.listen(port, () => {
+    console.log(`Server läuft auf http://localhost:${port}`);
+  });
+}

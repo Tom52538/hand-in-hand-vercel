@@ -4,7 +4,9 @@
   "description": "Hand in Hand",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "dev": "vercel dev",
+    "start": "node server.js",
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
     "express": "^4.17.1",
