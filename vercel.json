@@ -1,21 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
-  ],
   "env": {
-    "SUPABASE_URL": "<deine-supabase-url>",
-    "SUPABASE_KEY": "<dein-supabase-key>",
-    "SESSION_SECRET": "geheimer_schluessel",
-    "ADMIN_PASSWORD": "admin-passwort"
+    "SUPABASE_URL": "https://wxrljuqhetilhfbzrpfv.supabase.co",
+    "SUPABASE_KEY": "eyJhbGc...CI6IkpXVCJ9",
+    "SESSION_SECRET": "sup3r-s3cr3t!",
+    "ADMIN_PASSWORD": "admin"
   }
 }
